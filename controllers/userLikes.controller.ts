@@ -1,60 +1,119 @@
-//const userLikesLogic = require('../middlewares/userLikes.middleware');
 import express, { Router, Request, Response } from "express";
 import bodyParser from 'body-parser'
 import { authenticateToken } from "../middlewares/auth";
-import userModel from "../models/user";
-import userLikeModel from "../models/user-like";
+import CustomResponse from '../models/response';
+import { getUserLikes, unlikeUser, addUserLike, checkUserLike } from '../services/userLikes.service';
+import { getUser } from '../services/users.service';
 
 const router: Router = express.Router();
 const jsonParser = bodyParser.json() 
 
 // user and number of likes of a user
-router.get("/:id", authenticateToken, async (req: Request, res: Response) => {
-    const {userid} = req.params;
-    const user = await userModel.find({userid: userid});
-    const userLikes = await userLikeModel.find({userid: userid});
-    const likeNumbers = 2; // TODO count userLikes
+router.get("/:id", async (req: Request, res: Response) => {
+	const userid = req.params.id;
+	const user = await getUser(userid);
+	const userLikes = await getUserLikes(userid);
 
-    try {
-        res.send(userLikes); // TODO send both user and userLikes
-    } catch (error) {
-        res.status(500)
-            .send(error);
-    }
+	let likeNumbers = 0
+	let customRes: CustomResponse = {
+		success: false,
+		error: ""
+	};
+
+	for await (const {} of userLikes) {
+		likeNumbers += 1
+	}
+
+	if (user.length === 0) {
+		customRes.success = false
+		customRes.error = "User not found";
+		res.send(JSON.stringify(customRes))
+	}
+
+	try {
+		res.send(JSON.stringify({
+			user: user,
+			likeNumber: likeNumbers
+		}))
+	} catch (err) {
+		customRes.success = false
+		const error = err as Error;
+		customRes.error = error.message
+		res.status(500).send(JSON.stringify(customRes));
+	}
 });
 
 // add like
-router.post('/:id/like', jsonParser, authenticateToken, async (req: Request, res:Response) => {
-    const {byuserid} = req.params, // TODO auth
-        {userid} = req.params,
-        {
-            unlike, createdAt, lastModified
-        } = req.body;
+router.post('/:id/like', jsonParser, authenticateToken, async (req: Request, res: Response) => {
+	const byuserid = req.user?.userid ?? 0,
+		userid = req.params.id,
+		{
+			unlike,
+			createdAt,
+			lastModified
+		} = req.body;
 
-    const newLike = new userLikeModel({
-        userid, byuserid, unlike, createdAt, lastModified
-    })
+	let customRes: CustomResponse = {
+		success: false,
+		error: ""
+	};
 
-    newLike.save()
-        .then(() => {
-            res.send(JSON.stringify(userid)) // TODO send message?
-        })
-        .catch(err => console.error(err))
+	const existingLike = await checkUserLike(userid, byuserid)
+
+	if (!existingLike) {
+		const newLike = await addUserLike(userid, byuserid, unlike, createdAt, lastModified);
+
+		if (newLike) {
+			customRes.success = true
+			customRes.data = newLike
+			res.send(JSON.stringify({
+				customRes
+			}))
+		} else {
+			customRes.success = false;
+			customRes.error = "Error occurred.";
+			res.status(500).send(JSON.stringify(customRes))
+		}
+	} else {
+		customRes.success = false;
+		customRes.error = "Already liked this user!";
+		res.status(400).send(JSON.stringify(customRes))
+	}
 })
 
 // unlike
-router.post('/:id/unlike', jsonParser, authenticateToken, async (req:Request, res:Response) => {
-    const byuserid = req.user?.userid ?? 0,
-        {userid} = req.body,
-        filter = {byuserid: byuserid, userid: userid},
-        unlike = true,
-        update = {unlike: unlike};
+router.post('/:id/unlike', jsonParser, authenticateToken, async (req: Request, res: Response) => {
+	const byuserid = req.user?.userid ?? 0,
+		userid = req.params.id,
+		filter = {
+			byuserid: byuserid,
+			userid: userid
+		},
+		unlike = true,
+		lastModified = Date.now(),
+		update = {
+			unlike: unlike,
+			lastModified: lastModified
+		};
 
-    await userLikeModel.updateOne(filter, update)
-        .then(() => {
-            res.send("success")
-        })
-        .catch((err:Error) => console.error(err))
+	let customRes: CustomResponse = {
+		success: false,
+		error: ""
+	};
+
+	const userUnlikeResponse = await unlikeUser(filter, update);
+
+	if (userUnlikeResponse) {
+		customRes.success = true
+		customRes.data = userid
+		res.send(JSON.stringify({
+			customRes
+		}))
+	} else {
+		customRes.success = false;
+		customRes.error = "Error occurred.";
+		res.status(500).send(JSON.stringify(customRes))
+	}
 })
 
 export default router;
