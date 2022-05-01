@@ -35,6 +35,8 @@ app.use('/api', statisticsController)
 app.use('/api/me', userProfileController)
 app.use('/api/user', userLikeController)
 
-app.listen(port, () => {
+app.listen(process.env.NODE_ENV !== 'test' ? port : 0, () => {
     console.log(`Listening at http://localhost:${port}`)
 })
+
+export default app;

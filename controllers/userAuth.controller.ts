@@ -1,4 +1,3 @@
-//const usersLogic = require('../middlewares/users.middleware');
 import express, { Router, Request, Response } from "express";
 import bodyParser from 'body-parser'
 import { generateJwtToken } from '../middlewares/auth';
@@ -16,6 +15,11 @@ router.post('/signup', jsonParser, async (req: Request, res: Response) => {
 		email,
 		password
 	} = req.body;
+
+	if (!req.body?.email || !req.body?.password) {
+		res.send("Please provide valid email and password")
+		return;
+	}
 
 	let customRes: CustomResponse = {
 		success: false,
@@ -60,6 +64,11 @@ router.post('/login', jsonParser, async (req: Request, res: Response) => {
 		error: "",
 	};
 
+	if (!req.body?.email || !req.body?.password) {
+		res.send("Please post request with http client")
+		return;
+	}
+	
 	try {
 		var result = await getUserForLogin(req.body.email, req.body.password);
 
