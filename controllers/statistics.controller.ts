@@ -7,7 +7,9 @@ import userLikeModel from "../models/user-like";
 
 // most liked
 router.get("/most-liked", authenticateToken, async (req: Request, res: Response) => {
-    const userLikes = await userLikeModel.find({});
+    const userLikes = await userLikeModel.find({})
+    const userLikesJson = JSON.stringify(userLikes)
+    
     // TODO "join" and sort
 
     try {

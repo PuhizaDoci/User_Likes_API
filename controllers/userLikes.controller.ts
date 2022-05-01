@@ -10,16 +10,35 @@ const router: Router = express.Router();
 const jsonParser = bodyParser.json() 
 
 // user and number of likes of a user
-router.get("/:id", authenticateToken, async (req: Request, res: Response) => {
-    const {userid} = req.params;
+router.get("/:id", async (req: Request, res: Response) => {
+    const userid = req.params.id;
     const user = await userModel.find({userid: userid});
     const userLikes = await userLikeModel.find({userid: userid});
-    const likeNumbers = 2 // TODO count userLikes
+
+    let likeNumbers = 0
+    let customRes: CustomResponse = {
+        success: false,
+        error: ""
+    };
+
+    for await (const {} of userLikes) {
+        likeNumbers += 1
+      }
+    
+    if(user.length === 0){
+        customRes.success = false
+        customRes.error = "No user was found"
+
+        res.send(JSON.stringify(customRes))
+    }
 
     try {
         res.send(JSON.stringify({user: user, likeNumber: likeNumbers}))
     } catch (error) {
-        res.status(500).send(error);
+        customRes.success = false
+        customRes.error = error as string
+        
+        res.status(500).send(JSON.stringify(customRes));
     }
 });
 
