@@ -3,6 +3,7 @@ import express, { Router, Request, Response } from "express";
 import bodyParser from 'body-parser'
 import userModel from '../models/user';
 import {generateJwtToken} from '../middlewares/auth';
+import CustomResponse from '../models/response';
 
 const router: Router = express.Router();
 const jsonParser = bodyParser.json() 
@@ -12,6 +13,11 @@ router.post('/signup', jsonParser, (req: Request, res: Response) => {
     const {
         firstName, lastName, email, password
     } = req.body;
+    
+    let customRes: CustomResponse = {
+        success: false,
+        error: ""
+    };
 
     userModel.find({}).then((result: any) => { // TODO remove anys
         let newUserId = result.length + 1;
@@ -34,13 +40,24 @@ router.post('/signup', jsonParser, (req: Request, res: Response) => {
                             token: token
                         }))
                     }
+                    
+                    customRes.success = false
+                    customRes.error = "Could not find recently saved user id"
 
-                    res.status(500).send(); // TODO send descriptive error messages
-                } catch {
-                    res.status(500).send();
+                    res.status(500).send(customRes);
+                } catch(err) {
+                    customRes.success = false
+                    customRes.error = err as string
+
+                    res.status(500).send(JSON.stringify(customRes));
                 }
+            })        
+            .catch((err: Error) => {
+                customRes.success = false
+                customRes.error = err.message
+                
+                res.send(JSON.stringify(customRes))
             })
-            .catch((err: Error) => console.error(err))
     });
 })
 

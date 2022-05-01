@@ -10,17 +10,16 @@ const router: Router = express.Router();
 const jsonParser = bodyParser.json() 
 
 // user and number of likes of a user
-router.get("/:id", async (req: Request, res: Response) => {
-    const userid = req.params.id;
+router.get("/:id", authenticateToken, async (req: Request, res: Response) => {
+    const {userid} = req.params;
     const user = await userModel.find({userid: userid});
     const userLikes = await userLikeModel.find({userid: userid});
-    const likeNumbers = 2
+    const likeNumbers = 2 // TODO count userLikes
 
     try {
         res.send(JSON.stringify({user: user, likeNumber: likeNumbers}))
     } catch (error) {
-        res.status(500)
-            .send(error);
+        res.status(500).send(error);
     }
 });
 
@@ -30,16 +29,26 @@ router.post('/:id/like', jsonParser, authenticateToken, async (req: Request, res
         userid = req.params.id,
         {unlike, createdAt, lastModified} = req.body;
 
+    let customRes: CustomResponse = {
+        success: false,
+        error: ""
+    };
+
     const newLike = new userLikeModel({
         userid, byuserid, unlike, createdAt, lastModified
     })
 
     newLike.save()
         .then(() => {
-            res.send(JSON.stringify({saved: true, likeAdded: newLike}))
+            customRes.success = true
+
+            res.send(JSON.stringify({response: customRes, likeAdded: newLike}))
         })        
         .catch((err: Error) => {
-            res.send(JSON.stringify({saved: false, error: err.message}))
+            customRes.success = false
+            customRes.error = err.message
+
+            res.send(JSON.stringify(customRes))
         })
 })
 
@@ -52,12 +61,22 @@ router.post('/:id/unlike', jsonParser, authenticateToken, async (req:Request, re
         lastModified = Date.now(),
         update = {unlike: unlike, lastModified: lastModified};
 
+    let customRes: CustomResponse = {
+            success: false,
+            error: ""
+        };
+
     userLikeModel.updateOne(filter, update)
         .then(() => {
-            res.send(JSON.stringify({saved: true}))
+            customRes.success = true
+
+            res.send(JSON.stringify(customRes))
         })
         .catch((err: Error) => {
-            res.send(JSON.stringify({saved: false, error: err.message}))
+            customRes.success = false
+            customRes.error = err.message
+            
+            res.send(JSON.stringify(customRes))
         })
 })
 
