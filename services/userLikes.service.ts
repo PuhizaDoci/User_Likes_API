@@ -8,6 +8,14 @@ export async function getUserLikes(userid: string) {
     }
 }
 
+export async function checkUserLike(userid: string, byuserid: number) {
+    try {
+        return await userLikeModel.findOne({userid: userid, byuserid: byuserid, unlike: false});
+    } catch {
+        return null
+    }
+}
+
 export async function unlikeUser(filter: {}, update: {}) {
     try {
         return await userLikeModel.updateOne(filter, update);

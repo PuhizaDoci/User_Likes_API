@@ -2,7 +2,7 @@ import express, { Router, Request, Response } from "express";
 import bodyParser from 'body-parser'
 import { authenticateToken } from "../middlewares/auth";
 import CustomResponse from '../models/response';
-import { getUserLikes, unlikeUser, addUserLike } from '../services/userLikes.service';
+import { getUserLikes, unlikeUser, addUserLike, checkUserLike } from '../services/userLikes.service';
 import { getUser } from '../services/users.service';
 
 const router: Router = express.Router();
@@ -51,16 +51,25 @@ router.post('/:id/like', jsonParser, authenticateToken, async (req: Request, res
         error: ""
     };
 
-    const newLike = await addUserLike(userid, byuserid, unlike, createdAt, lastModified);
-    
-    if (newLike) {
-        customRes.success = true
-        customRes.data = newLike
-        res.send(JSON.stringify({customRes}))
-    } else {
+    const existingLike = await checkUserLike(userid, byuserid)
+
+    if(!existingLike){
+        const newLike = await addUserLike(userid, byuserid, unlike, createdAt, lastModified);
+        
+        if (newLike) {
+            customRes.success = true
+            customRes.data = newLike
+            res.send(JSON.stringify({customRes}))
+        } else {
+            customRes.success = false;
+            customRes.error = "Error occurred.";
+            res.status(500).send(JSON.stringify(customRes))
+        }
+    }
+    else{
         customRes.success = false;
-        customRes.error = "Error occurred.";
-        res.status(500).send(JSON.stringify(customRes))
+        customRes.error = "Already liked this user!";
+        res.status(400).send(JSON.stringify(customRes))
     }
 })
 
