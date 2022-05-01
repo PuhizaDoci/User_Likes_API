@@ -1,14 +1,13 @@
 //const usersLogic = require('../middlewares/users.middleware');
 import express, { Router, Request, Response } from "express";
 import { authenticateToken } from "../middlewares/auth";
+import { getAllUsers } from '../services/users.service';
 
 const router: Router = express.Router();
-import userLikeModel from "../models/user-like";
 
 // most liked
 router.get("/most-liked", authenticateToken, async (req: Request, res: Response) => {
-    const userLikes = await userLikeModel.find({})
-    const userLikesJson = JSON.stringify(userLikes)
+    const userLikes = await getAllUsers()
     
     // TODO "join" and sort
 
