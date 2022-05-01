@@ -4,19 +4,20 @@ import bodyParser from 'body-parser'
 import { authenticateToken } from "../middlewares/auth";
 import userModel from "../models/user";
 import userLikeModel from "../models/user-like";
+import CustomResponse from '../models/response';
 
 const router: Router = express.Router();
 const jsonParser = bodyParser.json() 
 
 // user and number of likes of a user
-router.get("/:id", authenticateToken, async (req: Request, res: Response) => {
-    const {userid} = req.params;
+router.get("/:id", async (req: Request, res: Response) => {
+    const userid = req.params.id;
     const user = await userModel.find({userid: userid});
     const userLikes = await userLikeModel.find({userid: userid});
-    const likeNumbers = 2; // TODO count userLikes
+    const likeNumbers = 2
 
     try {
-        res.send(userLikes); // TODO send both user and userLikes
+        res.send(JSON.stringify({user: user, likeNumber: likeNumbers}))
     } catch (error) {
         res.status(500)
             .send(error);
@@ -25,11 +26,9 @@ router.get("/:id", authenticateToken, async (req: Request, res: Response) => {
 
 // add like
 router.post('/:id/like', jsonParser, authenticateToken, async (req: Request, res:Response) => {
-    const {byuserid} = req.params, // TODO auth
-        {userid} = req.params,
-        {
-            unlike, createdAt, lastModified
-        } = req.body;
+    const byuserid = req.user?.userid ?? 0,
+        userid = req.params.id,
+        {unlike, createdAt, lastModified} = req.body;
 
     const newLike = new userLikeModel({
         userid, byuserid, unlike, createdAt, lastModified
@@ -37,24 +36,29 @@ router.post('/:id/like', jsonParser, authenticateToken, async (req: Request, res
 
     newLike.save()
         .then(() => {
-            res.send(JSON.stringify(userid)) // TODO send message?
+            res.send(JSON.stringify({saved: true, likeAdded: newLike}))
+        })        
+        .catch((err: Error) => {
+            res.send(JSON.stringify({saved: false, error: err.message}))
         })
-        .catch(err => console.error(err))
 })
 
 // unlike
 router.post('/:id/unlike', jsonParser, authenticateToken, async (req:Request, res:Response) => {
     const byuserid = req.user?.userid ?? 0,
-        {userid} = req.body,
+        userid = req.params.id,
         filter = {byuserid: byuserid, userid: userid},
         unlike = true,
-        update = {unlike: unlike};
+        lastModified = Date.now(),
+        update = {unlike: unlike, lastModified: lastModified};
 
-    await userLikeModel.updateOne(filter, update)
+    userLikeModel.updateOne(filter, update)
         .then(() => {
-            res.send("success")
+            res.send(JSON.stringify({saved: true}))
         })
-        .catch((err:Error) => console.error(err))
+        .catch((err: Error) => {
+            res.send(JSON.stringify({saved: false, error: err.message}))
+        })
 })
 
 export default router;

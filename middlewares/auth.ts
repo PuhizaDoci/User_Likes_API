@@ -1,8 +1,8 @@
 import jwt from 'jsonwebtoken';
 import {Request, Response} from 'express';
 
-export function generateJwtToken(id: string, email: string) {
-    return jwt.sign({id,email}, process.env.TOKEN_SECRET as string, { expiresIn: '3600s' });
+export function generateJwtToken(userid: string, email: string) {
+    return jwt.sign({userid, email}, process.env.TOKEN_SECRET as string, { expiresIn: '3600s' });
 }
 
 export function authenticateToken(req: Request, res: Response, next: any) {
