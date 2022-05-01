@@ -40,7 +40,6 @@ export async function addUser(userid: string, firstName: string, lastName: strin
         })
         return await newUser.save();
     } catch(err) {
-        console.log(err)
         return null;
     }
 }

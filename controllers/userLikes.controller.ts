@@ -2,7 +2,7 @@ import express, { Router, Request, Response } from "express";
 import bodyParser from 'body-parser'
 import { authenticateToken } from "../middlewares/auth";
 import CustomResponse from '../models/response';
-import { getUserLikes, unlikeUser, addUserLike } from '../services/userLikes.service';
+import { getUserLikes, unlikeUser, addUserLike, checkUserLike } from '../services/userLikes.service';
 import { getUser } from '../services/users.service';
 
 const router: Router = express.Router();
@@ -32,9 +32,10 @@ router.get("/:id", async (req: Request, res: Response) => {
 
     try {
         res.send(JSON.stringify({user: user, likeNumber: likeNumbers}))
-    } catch (error) {
+    } catch (err) {
         customRes.success = false
-        customRes.error = error as string
+        const error = err as Error;
+        customRes.error = error.message
         res.status(500).send(JSON.stringify(customRes));
     }
 });
@@ -50,16 +51,25 @@ router.post('/:id/like', jsonParser, authenticateToken, async (req: Request, res
         error: ""
     };
 
-    const newLike = await addUserLike(userid, byuserid, unlike, createdAt, lastModified);
-    
-    if (!newLike) {
-        customRes.success = true
-        customRes.data = newLike
-        res.send(JSON.stringify({customRes}))
-    } else {
+    const existingLike = await checkUserLike(userid, byuserid)
+
+    if(!existingLike){
+        const newLike = await addUserLike(userid, byuserid, unlike, createdAt, lastModified);
+        
+        if (newLike) {
+            customRes.success = true
+            customRes.data = newLike
+            res.send(JSON.stringify({customRes}))
+        } else {
+            customRes.success = false;
+            customRes.error = "Error occurred.";
+            res.status(500).send(JSON.stringify(customRes))
+        }
+    }
+    else{
         customRes.success = false;
-        customRes.error = "Error occurred.";
-        res.status(500).send(JSON.stringify(customRes))
+        customRes.error = "Already liked this user!";
+        res.status(400).send(JSON.stringify(customRes))
     }
 })
 
@@ -79,7 +89,7 @@ router.post('/:id/unlike', jsonParser, authenticateToken, async (req:Request, re
 
     const userUnlikeResponse = await unlikeUser(filter, update);
         
-    if (!userUnlikeResponse) {
+    if (userUnlikeResponse) {
         customRes.success = true
         customRes.data = userid
         res.send(JSON.stringify({customRes}))
