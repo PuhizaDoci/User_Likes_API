@@ -2,6 +2,7 @@
 import express, { Router, Request, Response } from "express";
 import bodyParser from 'body-parser'
 import userModel from '../models/user';
+import {generateJwtToken} from '../middlewares/auth';
 
 const router: Router = express.Router();
 const jsonParser = bodyParser.json() 
@@ -26,9 +27,11 @@ router.post('/signup', jsonParser, (req: Request, res: Response) => {
                     var result = await userModel.find({userid: newUserId});
 
                     if (result[0]?._id?.toString().length >= 1) {
+                        const token = generateJwtToken(result[0]?.newUserId, req.body.email);
                         res.send(JSON.stringify({
                             userid: newUserId,
-                            id: result[0]?._id
+                            id: result[0]?._id,
+                            token: token
                         }))
                     }
 
@@ -42,12 +45,18 @@ router.post('/signup', jsonParser, (req: Request, res: Response) => {
 })
 
 // user login
-router.post('/login', jsonParser, async (req, res) => {
+router.post('/login', jsonParser, async (req: Request, res: Response) => {
     try {
-        var result = await userModel.findOne({email: req.body.email});
+        var result = await userModel.findOne({email: req.body.email, password: req.body.password});
         
-        if (result && result._id)
-            res.send(result);
+        if (result && result._id){
+            const token = generateJwtToken(result.userid, req.body.email);
+            res.send(JSON.stringify({
+                user: result,
+                id: result._id,
+                token: token
+            }))
+        }
         else
             res.send({userid: -1})
       } catch (err) {
