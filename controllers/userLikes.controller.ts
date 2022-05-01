@@ -32,9 +32,10 @@ router.get("/:id", async (req: Request, res: Response) => {
 
     try {
         res.send(JSON.stringify({user: user, likeNumber: likeNumbers}))
-    } catch (error) {
+    } catch (err) {
         customRes.success = false
-        customRes.error = error as string
+        const error = err as Error;
+        customRes.error = error.message
         res.status(500).send(JSON.stringify(customRes));
     }
 });
@@ -52,7 +53,7 @@ router.post('/:id/like', jsonParser, authenticateToken, async (req: Request, res
 
     const newLike = await addUserLike(userid, byuserid, unlike, createdAt, lastModified);
     
-    if (!newLike) {
+    if (newLike) {
         customRes.success = true
         customRes.data = newLike
         res.send(JSON.stringify({customRes}))
@@ -79,7 +80,7 @@ router.post('/:id/unlike', jsonParser, authenticateToken, async (req:Request, re
 
     const userUnlikeResponse = await unlikeUser(filter, update);
         
-    if (!userUnlikeResponse) {
+    if (userUnlikeResponse) {
         customRes.success = true
         customRes.data = userid
         res.send(JSON.stringify({customRes}))
