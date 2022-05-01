@@ -1,7 +1,7 @@
 import express, { Router, Request, Response } from "express";
 import bodyParser from 'body-parser';
 import { authenticateToken } from "../middlewares/auth";
-import { getUser, updateUserPassword } from '../services/users.service';
+import { getUser, updateUserPassword, getUserForLogin } from '../services/users.service';
 import CustomResponse from '../models/response';
 
 const router: Router = express.Router();
@@ -31,18 +31,26 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
 // user password update 
 router.post('/update-password', jsonParser, authenticateToken, async (req:Request, res:Response) => {
     const userid = req.user?.userid ?? 0,
-        {email, password} = req.body,
-        filter = {userid: userid, email: email},
-        update = {password: password};
-
+        {email, oldPassword, newPassword} = req.body,
+        filter = {userid: userid, email: email, password: oldPassword},
+        update = {password: newPassword};
+    
     let customRes: CustomResponse = {
         success: false,
         error: ""
     };
 
+    var result = await getUserForLogin(req.body.email, req.body.oldPassword);
+
+    if (!result){
+        customRes.success = false;
+        customRes.error = "Error occurred";
+        res.status(500).send(JSON.stringify(customRes))
+    }
+    
     const userUpdateResponse = await updateUserPassword(filter, update);
     
-    if (!userUpdateResponse) {
+    if (userUpdateResponse) {
         customRes.success = true
         customRes.data = userid
         res.send(JSON.stringify({customRes}))
